@@ -1,4 +1,9 @@
+use cursive::theme::BaseColor;
+use cursive::theme::Color;
+use cursive::theme::Effect;
+use cursive::theme::Style;
 use cursive::traits::*;
+use cursive::utils::markup::StyledString;
 use cursive::views::{Dialog, EditView, LinearLayout, TextView};
 use cursive::Cursive;
 use std::fs;
@@ -6,6 +11,8 @@ use std::time::SystemTime;
 
 struct Game {
     words: Vec<String>,
+    display: Vec<String>,
+    display_counter: usize,
     counter: usize,
     time: SystemTime,
 }
@@ -14,6 +21,8 @@ impl Clone for Game {
     fn clone(&self) -> Self {
         Game {
             words: self.words.clone(),
+            display: self.display.clone(),
+            display_counter: self.display_counter,
             counter: self.counter,
             time: self.time,
         }
@@ -23,6 +32,8 @@ impl Game {
     fn new() -> Self {
         Game {
             words: Vec::new(),
+            display: Vec::new(),
+            display_counter: 1,
             counter: 0,
             time: SystemTime::now(),
         }
@@ -49,6 +60,7 @@ impl Game {
             .map(|x| x.to_string())
             .collect();
         self.words = self.words.clone();
+        self.display = self.words.clone();
     }
 }
 fn main() {
@@ -58,7 +70,7 @@ fn main() {
     let game2 = game.clone();
     let mut siv = cursive::default();
     siv.set_user_data(game2);
-    typing_view(&mut siv, game.words.clone());
+    typing_view(&mut siv, game.words.clone(), game.display_counter);
     siv.run();
 }
 
@@ -78,19 +90,30 @@ fn check(s: &mut Cursive, text: &str, _: usize) {
             if text == word {
                 game.counter += text.len() + 1;
             }
-            let game2 = game.clone();
-            s.set_user_data(game2);
-            typing_view(s, game.words.clone());
+            game.display_counter += 1;
+            s.set_user_data(game.clone());
+            typing_view(s, game.display.clone(), game.display_counter);
         }
     }
 }
 
-fn typing_view(s: &mut Cursive, words: Vec<String>) {
+fn typing_view(s: &mut Cursive, mut words: Vec<String>, word_counter: usize) {
+    let words2 = words.split_off(word_counter);
+    let word_to_type = words.pop();
+    let mut styled = StyledString::plain(words.join(" "));
+    if words.len() != 0 {
+        styled.append(StyledString::plain(" "));
+    }
+    styled.append(StyledString::styled(
+        word_to_type.unwrap() + " ",
+        Style::from(Color::Light(BaseColor::Red)).combine(Effect::Bold),
+    ));
+    styled.append(StyledString::plain(words2.join(" ")));
     s.pop_layer();
     s.add_layer(
         Dialog::around(
             LinearLayout::vertical()
-                .child(TextView::new(words.join(" ")).fixed_width(40))
+                .child(TextView::new(styled).fixed_width(40))
                 .child(
                     EditView::new()
                         .on_edit(check)
