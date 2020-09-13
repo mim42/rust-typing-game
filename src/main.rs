@@ -2,7 +2,6 @@ use cursive::traits::*;
 use cursive::views::{Dialog, EditView, LinearLayout, TextView};
 use cursive::Cursive;
 use std::fs;
-use std::ops::RangeFrom;
 use std::time::SystemTime;
 
 struct Game {
@@ -16,7 +15,7 @@ impl Clone for Game {
         Game {
             words: self.words.clone(),
             counter: self.counter,
-            time: SystemTime::now(),
+            time: self.time,
         }
     }
 }
@@ -34,18 +33,11 @@ impl Game {
     }
 
     fn measure_speed(&mut self) -> f32 {
-        let u: Vec<String> = self
-            .words
-            .drain(RangeFrom {
-                start: self.counter,
-            })
-            .collect();
-        let char_counter: usize = u.iter().fold(0, |acc, word| acc + word.len());
         let secs = match self.time.elapsed() {
             Ok(t) => t.as_secs(),
             Err(_) => 100,
         };
-        char_counter as f32 / secs as f32
+        self.counter as f32 / secs as f32 * 60.0
     }
 
     fn create_word_list(&mut self, filename: String) {
@@ -66,37 +58,39 @@ fn main() {
     let game2 = game.clone();
     let mut siv = cursive::default();
     siv.set_user_data(game2);
-    add_name(&mut siv, game.words.clone());
+    typing_view(&mut siv, game.words.clone());
     siv.run();
 }
 
 fn check(s: &mut Cursive, text: &str, _: usize) {
     if text.contains(" ") {
-        print!("{}", text);
-        let game = match s.user_data::<Game>() {
+        let mut game = match s.user_data::<Game>() {
             Some(v) => v,
-            None => panic!(),
-        };
+            None => panic!("what the fuck"),
+        }
+        .clone();
         let mut text = text.to_string();
         text.pop();
-        let word = match game.words.pop() {
-            Some(v) => v,
-            None => panic!(game.measure_speed().to_string()),
-        };
-        if text == word {
-            game.counter += 1;
-            println!("{}", text)
+        if game.words.len() == 1 {
+            show_end(s, &mut game);
+        } else {
+            let word = game.words.remove(0);
+            if text == word {
+                game.counter += text.len() + 1;
+            }
+            let game2 = game.clone();
+            s.set_user_data(game2);
+            typing_view(s, game.words.clone());
         }
-        add_name(s, game.words.clone());
     }
 }
 
-fn add_name(s: &mut Cursive, words: Vec<String>) {
+fn typing_view(s: &mut Cursive, words: Vec<String>) {
     s.pop_layer();
     s.add_layer(
         Dialog::around(
             LinearLayout::vertical()
-                .child(TextView::new(words.join(" ")))
+                .child(TextView::new(words.join(" ")).fixed_width(40))
                 .child(
                     EditView::new()
                         .on_edit(check)
@@ -108,5 +102,16 @@ fn add_name(s: &mut Cursive, words: Vec<String>) {
         .button("Cancel", |s| {
             s.quit();
         }),
+    );
+}
+
+fn show_end(s: &mut Cursive, game: &mut Game) {
+    s.pop_layer();
+    s.add_layer(
+        Dialog::around(TextView::new(game.measure_speed().to_string() + " cpm"))
+            .title("End results")
+            .button("Exit", |s| {
+                s.quit();
+            }),
     );
 }
