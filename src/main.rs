@@ -1,5 +1,5 @@
 use cursive::traits::*;
-use cursive::views::{Dialog, EditView};
+use cursive::views::{Dialog, EditView, LinearLayout, TextView};
 use cursive::Cursive;
 use std::fs;
 use std::ops::RangeFrom;
@@ -10,7 +10,25 @@ struct Game {
     counter: usize,
     time: SystemTime,
 }
+
+impl Clone for Game {
+    fn clone(&self) -> Self {
+        Game {
+            words: self.words.clone(),
+            counter: self.counter,
+            time: SystemTime::now(),
+        }
+    }
+}
 impl Game {
+    fn new() -> Self {
+        Game {
+            words: Vec::new(),
+            counter: 0,
+            time: SystemTime::now(),
+        }
+    }
+
     fn start_typing(&mut self) {
         self.time = SystemTime::now();
     }
@@ -38,48 +56,53 @@ impl Game {
             .into_iter()
             .map(|x| x.to_string())
             .collect();
+        self.words = self.words.clone();
     }
 }
 fn main() {
-    let mut list_of_words: Vec<String> = Vec::new();
-    list_of_words.push("hi".to_string());
-    list_of_words.push("two".to_string());
+    let mut game: Game = Game::new();
+    game.create_word_list("/home/mim/rust-typing-speed/src/text.txt".to_string());
+    game.start_typing();
+    let game2 = game.clone();
     let mut siv = cursive::default();
-
-    siv.set_user_data(list_of_words);
-    add_name(&mut siv);
+    siv.set_user_data(game2);
+    add_name(&mut siv, game.words.clone());
     siv.run();
 }
 
-fn check(s: &mut Cursive, text: &str, size: usize) {
+fn check(s: &mut Cursive, text: &str, _: usize) {
     if text.contains(" ") {
         print!("{}", text);
-        let list = match s.user_data::<Vec<String>>() {
+        let game = match s.user_data::<Game>() {
             Some(v) => v,
             None => panic!(),
         };
         let mut text = text.to_string();
         text.pop();
-        let word = match list.pop() {
+        let word = match game.words.pop() {
             Some(v) => v,
-            None => "".to_string(),
+            None => panic!(game.measure_speed().to_string()),
         };
         if text == word {
+            game.counter += 1;
             println!("{}", text)
         }
-        s.pop_layer();
-        add_name(s);
+        add_name(s, game.words.clone());
     }
 }
 
-fn add_name(s: &mut Cursive) {
+fn add_name(s: &mut Cursive, words: Vec<String>) {
     s.pop_layer();
     s.add_layer(
         Dialog::around(
-            EditView::new()
-                .on_edit(check)
-                .with_name("type")
-                .fixed_width(40),
+            LinearLayout::vertical()
+                .child(TextView::new(words.join(" ")))
+                .child(
+                    EditView::new()
+                        .on_edit(check)
+                        .with_name("type")
+                        .fixed_width(40),
+                ),
         )
         .title("Type as fast as possible")
         .button("Cancel", |s| {
