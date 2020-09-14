@@ -8,6 +8,7 @@ use cursive::views::{Dialog, EditView, LinearLayout, TextView};
 use cursive::Cursive;
 use rand::seq::SliceRandom;
 use rand::thread_rng;
+use std::env;
 use std::fs;
 use std::time::SystemTime;
 
@@ -66,8 +67,30 @@ impl Game {
     }
 }
 fn main() {
+    let args: Vec<String> = env::args().collect();
     let mut game: Game = Game::new();
-    game.create_word_list("text.txt".to_string());
+    if args.len() == 2 {
+        game.create_word_list(args.last().unwrap().to_string());
+    } else {
+        let mut default_words: Vec<String> = vec![
+            "his", "that", "he", "was", "for", "on", "are", "with", "they", "be", "at", "one",
+            "have", "this", "from", "by", "hot", "word", "but", "what", "some", "is", "it", "you",
+            "or", "had", "the", "of", "to", "and", "a", "in", "we", "can", "out", "other", "were",
+            "which", "do", "their", "time", "if", "will", "how", "said", "an", "each", "tell",
+            "does", "set", "three", "want", "air", "well", "also", "play", "small", "end", "put",
+            "home", "read", "hand", "port", "large", "spell", "add", "even", "land", "here",
+            "must", "big", "high", "such", "follow", "act", "why", "ask", "men", "change", "went",
+            "light", "kind", "off", "need", "house", "picture", "try", "us", "again", "animal",
+            "point", "mother", "world", "near", "build", "self", "earth", "father",
+        ]
+        .into_iter()
+        .map(|x| x.to_string())
+        .collect::<Vec<String>>();
+        default_words.shuffle(&mut thread_rng());
+        game.words = default_words.clone();
+        game.display = default_words.clone();
+    }
+
     game.start_typing();
     let game2 = game.clone();
     let mut siv = cursive::default();
