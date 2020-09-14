@@ -6,6 +6,8 @@ use cursive::traits::*;
 use cursive::utils::markup::StyledString;
 use cursive::views::{Dialog, EditView, LinearLayout, TextView};
 use cursive::Cursive;
+use rand::seq::SliceRandom;
+use rand::thread_rng;
 use std::fs;
 use std::time::SystemTime;
 
@@ -58,14 +60,14 @@ impl Game {
             .split("\n")
             .into_iter()
             .map(|x| x.to_string())
-            .collect();
-        self.words = self.words.clone();
+            .collect::<Vec<String>>();
+        self.words.shuffle(&mut thread_rng());
         self.display = self.words.clone();
     }
 }
 fn main() {
     let mut game: Game = Game::new();
-    game.create_word_list("/home/mim/rust-typing-speed/src/text.txt".to_string());
+    game.create_word_list("text.txt".to_string());
     game.start_typing();
     let game2 = game.clone();
     let mut siv = cursive::default();
@@ -129,12 +131,18 @@ fn typing_view(s: &mut Cursive, mut words: Vec<String>, word_counter: usize) {
 }
 
 fn show_end(s: &mut Cursive, game: &mut Game) {
+    let cpm = game.measure_speed();
+    let wpm = cpm / 5.0;
     s.pop_layer();
     s.add_layer(
-        Dialog::around(TextView::new(game.measure_speed().to_string() + " cpm"))
-            .title("End results")
-            .button("Exit", |s| {
-                s.quit();
-            }),
+        Dialog::around(
+            LinearLayout::vertical()
+                .child(TextView::new(cpm.to_string() + " cpm"))
+                .child(TextView::new(wpm.to_string() + "~ wpm")),
+        )
+        .title("Results")
+        .button("Exit", |s| {
+            s.quit();
+        }),
     );
 }
