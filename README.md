@@ -3,3 +3,4 @@
 
 If a location of a text file is not supplied, it uses the 100 most common English words.
 
+![screenshot](https://imgur.com/a/gprdJSW)
